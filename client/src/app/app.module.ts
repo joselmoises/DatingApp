@@ -25,6 +25,8 @@ import { TabsModule } from 'ngx-bootstrap/tabs';
 import { MemberEditComponent } from './members/member-edit/member-edit.component';
 import { NgxSpinnerModule } from "ngx-spinner";
 import { LoadingInterceptor } from './_interceptors/loading.interceptor';
+import { PhotoEditorComponent } from './members/photo-editor/photo-editor.component';
+import { FileUploadModule } from 'ng2-file-upload';
 
 @NgModule({
   declarations: [
@@ -39,7 +41,8 @@ import { LoadingInterceptor } from './_interceptors/loading.interceptor';
     NotFoundComponent,
     ServerErrorComponent,
     MemberCardComponent,
-    MemberEditComponent
+    MemberEditComponent,
+    PhotoEditorComponent
   ],
   imports: [
     BrowserModule,
@@ -52,7 +55,8 @@ import { LoadingInterceptor } from './_interceptors/loading.interceptor';
     ToastrModule.forRoot({
       positionClass: 'toast-bottom'
     }),
-    NgxSpinnerModule.forRoot({ type: 'line-scale-party' })
+    NgxSpinnerModule.forRoot({ type: 'line-scale-party' }),
+    FileUploadModule
   ],
   providers: [
     {provide: HTTP_INTERCEPTORS, useClass: ErrorInterceptor, multi: true},
