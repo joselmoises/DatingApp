@@ -2,5 +2,14 @@ using System.ComponentModel.DataAnnotations;
 
 namespace API.DTOs
 {
-    public record RegisterDto([property: Required] string Username, [property: Required] string Gender, [property: Required] string KnownAs, [property: Required] DateOnly? DateOfBirth, [property: Required] string City, [property: Required] string Country, [property: Required][property: StringLength(8, MinimumLength = 4)] string Password);
+    public class RegisterDto
+    {
+        public string Username { get; set; }
+        public string Gender { get; set; }
+        public string KnownAs { get; set; }
+        public DateOnly? DateOfBirth { get; set; }
+        public string City { get; set; }
+        public string Country { get; set; }
+        public string Password { get; set; }
+    }
 }
