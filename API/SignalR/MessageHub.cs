@@ -11,16 +11,14 @@ namespace API.SignalR
     [Authorize]
     public class MessageHub : Hub
     {
-        private readonly IMessageRepository _messageRepository;
-        private readonly IUserRepository _userRepository;
         private readonly IMapper _mapper;
         private readonly IHubContext<Presencehub> _presenceHub;
-        public MessageHub(IMessageRepository messageRepository, IUserRepository userRepository, IMapper mapper, IHubContext<Presencehub> presenceHub)
+        private readonly IUnitOfWork _uow;
+        public MessageHub(IUnitOfWork uow, IMapper mapper, IHubContext<Presencehub> presenceHub)
         {
+            _uow = uow;
             _presenceHub = presenceHub;
             _mapper = mapper;
-            _userRepository = userRepository;
-            _messageRepository = messageRepository;
         }
 
         public override async Task OnConnectedAsync()
@@ -31,7 +29,9 @@ namespace API.SignalR
             await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
             await AddToGroup(groupName);
 
-            var messages = await _messageRepository.GetMessageThread(Context.User.GetUsername(), otherUser);
+            var messages = await _uow.MessageRepository.GetMessageThread(Context.User.GetUsername(), otherUser);
+
+            if(_uow.HasChanfes()) await _uow.Complete();
             await Clients.Group(groupName).SendAsync("ReceiveMessageThread", messages);
         }
 
@@ -49,8 +49,8 @@ namespace API.SignalR
             if (username == createMessageDto.RecipientUsername.ToLower())
                 throw new HubException("You cannot send messages to yourself");
 
-            var sender = await _userRepository.GetUserByUsernameAsync(username);
-            var recipient = await _userRepository.GetUserByUsernameAsync(createMessageDto.RecipientUsername);
+            var sender = await _uow.UserRepository.GetUserByUsernameAsync(username);
+            var recipient = await _uow.UserRepository.GetUserByUsernameAsync(createMessageDto.RecipientUsername);
             if(recipient == null) throw new HubException("Not found user");
 
             var message = new Message
@@ -63,7 +63,7 @@ namespace API.SignalR
             };
 
             var groupName = GetGroupNome(sender.UserName, recipient.UserName);
-            var group = await _messageRepository.GetMessageGroup(groupName);
+            var group = await _uow.MessageRepository.GetMessageGroup(groupName);
 
             if(group.Connections.Any(x => x.Username == recipient.UserName))
             {
@@ -80,9 +80,9 @@ namespace API.SignalR
             }
 
 
-            _messageRepository.AddMessage(message);
+            _uow.MessageRepository.AddMessage(message);
 
-            if (await _messageRepository.SaveAllAsync())
+            if (await _uow.Complete())
             {
                 await Clients.Group(groupName).SendAsync("NewMessage", _mapper.Map<MessageDto>(message));
             }
@@ -96,24 +96,24 @@ namespace API.SignalR
 
         private async Task<bool> AddToGroup(string groupName)
         {
-            var group = await _messageRepository.GetMessageGroup(groupName);
+            var group = await _uow.MessageRepository.GetMessageGroup(groupName);
             var connection = new Connection(Context.ConnectionId, Context.User.GetUsername());
 
             if(group == null)
             {
                 group = new Group(groupName);
-                _messageRepository.AddGroup(group);
+                _uow.MessageRepository.AddGroup(group);
             }
 
             group.Connections.Add(connection);
-            return await _messageRepository.SaveAllAsync();
+            return await _uow.Complete();
         }
 
         private async Task RemoveFromMessageGroup()
         {
-            var connectio = await _messageRepository.GetConnection(Context.ConnectionId);
-            _messageRepository.RemoveConnection(connectio);
-            await _messageRepository.SaveAllAsync();
+            var connectio = await _uow.MessageRepository.GetConnection(Context.ConnectionId);
+            _uow.MessageRepository.RemoveConnection(connectio);
+            await _uow.Complete();
         }
     }
 }
